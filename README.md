@@ -46,7 +46,7 @@ expediente.pdf
 
 ## Arquitectura multiagente
 
-El sistema usa **LangGraph** para orquestar 10 agentes con roles definidos y estado compartido. Cada agente tiene una responsabilidad única, salida auditable y registro de traza.
+El sistema usa **LangGraph** para orquestar **11 agentes** con roles definidos y estado compartido. Cada agente tiene una responsabilidad única, salida auditable y registro de traza.
 
 | Agente | Tipo | Función |
 |--------|------|---------|
@@ -60,8 +60,10 @@ El sistema usa **LangGraph** para orquestar 10 agentes con roles definidos y est
 | `adversarial` | LLM (Groq) | Simula ataques de la contraparte y excepciones |
 | `simulator` | LLM (Groq) | Ejecuta escenarios de perturbación S1–S4 |
 | `auditor` | LLM (Groq) | Verifica fuentes, trazabilidad y coherencia |
+| `dashboard_node` | Python puro | Consolida artefactos, genera alertas y semáforo |
 
-Los agentes `intake`, `network_builder` y `metrics` son **determinísticos** (sin LLM). El resto usa **llama-3.3-70b** vía Groq (gratuito).
+Los agentes `intake`, `network_builder`, `metrics` y `dashboard_node` son **determinísticos** (sin LLM). El resto usa **llama-3.3-70b** vía Groq (gratuito).
+
 
 ---
 
@@ -76,6 +78,8 @@ Todos se guardan en la carpeta `output/` al ejecutar el sistema:
 | `output/metricas.json` | E6 | Indicadores de cobertura, fragilidad y centralidad |
 | `output/escenarios.json` | E7 | 4 escenarios procesales con efectos antes/después |
 | `output/trazas.jsonl` | E3 | Log completo: agente, entrada, salida, timestamp |
+| `output/dashboard_data.json` | E8 | Resumen ejecutivo, alertas y preguntas sugeridas |
+| `output/red_multicapa.html` | E5 | Visualización interactiva de la red (PyVis) |
 
 ---
 
@@ -165,6 +169,7 @@ Verás en consola el avance de cada agente:
 [adversarial]      ✓  4 ataques identificados
 [simulator]        ✓  4 escenarios simulados
 [auditor]          ✓  score de calidad: 0.79 | 2 alertas
+[dashboard_node]   ✓  semaforo=amarillo | 3 alertas | 8 preguntas
 ```
 
 ### Paso 3 — Abrir el dashboard
@@ -192,7 +197,7 @@ teoria-del-caso-aumentada/
 │       └── expediente.pdf          ← PDF del caso (agregar antes de ejecutar)
 │
 ├── src/
-│   ├── state.py                    ← Estado compartido entre agentes (TypedDict)
+│   ├── state.py                    ← Estado compartido entre agentes
 │   ├── graph.py                    ← Grafo LangGraph + punto de entrada principal
 │   ├── config.py                   ← Modelo LLM, rutas, umbrales
 │   │
@@ -206,7 +211,8 @@ teoria-del-caso-aumentada/
 │   │   ├── metrics.py              ← Métricas de red y HPN (Python puro)
 │   │   ├── adversarial.py          ← Ataques y excepciones
 │   │   ├── simulator.py            ← Escenarios S1–S4
-│   │   └── auditor.py              ← Verificación de calidad
+│   │   ├── auditor.py              ← Verificación de calidad
+│   │   └── dashboard_node.py       ← Alertas, semáforo, preguntas
 │   │
 │   └── tools/
 │       ├── pdf_tools.py            ← PyMuPDF: segmentación y hash
@@ -218,7 +224,9 @@ teoria-del-caso-aumentada/
 │   ├── grafo.json
 │   ├── metricas.json
 │   ├── escenarios.json
-│   └── trazas.jsonl
+│   ├── trazas.jsonl
+│   ├── dashboard_data.json
+│   └── red_multicapa.html
 │
 └── dashboard/
     └── app.py                      ← Dashboard Streamlit del abogado
@@ -252,6 +260,7 @@ teoria-del-caso-aumentada/
 | Cobertura normativa | % de hechos vinculados a norma o precedente |
 | Índice de vacíos críticos | N.º de filas sin prueba sobre total |
 | Índice de contradicción | N.º de filas con pruebas incompatibles |
+| Trazabilidad | % de filas con fuente del expediente verificable |
 | Acciones pendientes | N.º de filas que exigen diligencia adicional |
 
 ### De la Red Multicapa
@@ -263,7 +272,6 @@ teoria-del-caso-aumentada/
 | Punto único de falla | Nodo cuya eliminación colapsa la ruta principal |
 | Fragilidad probatoria | Caída del score si se elimina una prueba |
 | Redundancia probatoria | Pruebas independientes que soportan el mismo hecho |
-| Robustez adversarial | % de rutas que sobreviven a ataques simulados |
 
 ---
 

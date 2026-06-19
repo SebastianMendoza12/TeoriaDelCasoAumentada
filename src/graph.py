@@ -1,7 +1,7 @@
 """
 graph.py — Grafo LangGraph y punto de entrada principal del sistema.
 
-Orquesta los 10 agentes en secuencia con estado compartido.
+Orquesta los 11 agentes en secuencia con estado compartido.
 Guarda todos los artefactos en la carpeta output/.
 
 Uso:
@@ -25,6 +25,7 @@ from src.agents.metrics         import metrics_node
 from src.agents.adversarial     import adversarial_node
 from src.agents.simulator       import simulator_node
 from src.agents.auditor         import auditor_node
+from src.agents.dashboard_node  import dashboard_node        # Agente 11
 
 from src.config import (
     PDF_PATH,
@@ -38,7 +39,7 @@ from src.config import (
 def build_graph() -> StateGraph:
     builder = StateGraph(CaseState)
 
-    # Registrar los 10 nodos
+    # Registrar los 11 nodos
     builder.add_node("intake",          intake_node)
     builder.add_node("extractor",       extractor_node)
     builder.add_node("probatorio",      probatorio_node)
@@ -49,21 +50,21 @@ def build_graph() -> StateGraph:
     builder.add_node("adversarial",     adversarial_node)
     builder.add_node("simulator",       simulator_node)
     builder.add_node("auditor",         auditor_node)
+    builder.add_node("dashboard_node",  dashboard_node)      # Agente 11
 
-    # Flujo secuencial
-    # intake → extractor → probatorio y normativo (paralelos) → hpn_builder
-    # → network_builder → metrics → adversarial → simulator → auditor → END
-    builder.add_edge(START,            "intake")
-    builder.add_edge("intake",         "extractor")
-    builder.add_edge("extractor",      "probatorio")
-    builder.add_edge("probatorio",     "normativo")
-    builder.add_edge("normativo",      "hpn_builder")
-    builder.add_edge("hpn_builder",    "network_builder")
-    builder.add_edge("network_builder","metrics")
-    builder.add_edge("metrics",        "adversarial")
-    builder.add_edge("adversarial",    "simulator")
-    builder.add_edge("simulator",      "auditor")
-    builder.add_edge("auditor",        END)
+    # Flujo secuencial completo
+    builder.add_edge(START,             "intake")
+    builder.add_edge("intake",          "extractor")
+    builder.add_edge("extractor",       "probatorio")
+    builder.add_edge("probatorio",      "normativo")
+    builder.add_edge("normativo",       "hpn_builder")
+    builder.add_edge("hpn_builder",     "network_builder")
+    builder.add_edge("network_builder", "metrics")
+    builder.add_edge("metrics",         "adversarial")
+    builder.add_edge("adversarial",     "simulator")
+    builder.add_edge("simulator",       "auditor")
+    builder.add_edge("auditor",         "dashboard_node")    # Agente 11
+    builder.add_edge("dashboard_node",  END)
 
     return builder.compile()
 
@@ -135,7 +136,6 @@ if __name__ == "__main__":
     estado_inicial: CaseState = {
         "case_id":   f"caso-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}",
         "pdf_path":  str(PDF_PATH),
-        # Campos vacíos — cada agente los llena
         "segmentos":  [],
         "hechos":     [],
         "actores":    [],
