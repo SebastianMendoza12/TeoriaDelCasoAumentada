@@ -1,32 +1,45 @@
-# src/config.py
+"""
+config.py
+Configuración central del sistema: modelo LLM, rutas y umbrales.
+"""
+
 import os
 from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# ── Rutas ──────────────────────────────────────────────────────────
-BASE_DIR    = Path(__file__).parent.parent
-INPUT_DIR   = BASE_DIR / "data" / "input"
+# ── Rutas ──────────────────────────────────────────────────────────────────────
+BASE_DIR    = Path(__file__).resolve().parent.parent
+DATA_DIR    = BASE_DIR / "data" / "input"
 OUTPUT_DIR  = BASE_DIR / "output"
-OUTPUT_DIR.mkdir(exist_ok=True)
 
-PDF_PATH    = INPUT_DIR / "expediente.pdf"
+PDF_PATH    = DATA_DIR / "expediente.pdf"
 
-# Salidas
-HPN_PATH        = OUTPUT_DIR / "matriz_hpn.json"
-GRAFO_PATH      = OUTPUT_DIR / "grafo.json"
-METRICAS_PATH   = OUTPUT_DIR / "metricas.json"
-ESCENARIOS_PATH = OUTPUT_DIR / "escenarios.json"
-TRAZAS_PATH     = OUTPUT_DIR / "trazas.jsonl"
-ESTADO_PATH     = OUTPUT_DIR / "estado_final.json"
+OUTPUT_HPN       = OUTPUT_DIR / "matriz_hpn.json"
+OUTPUT_GRAFO     = OUTPUT_DIR / "grafo.json"
+OUTPUT_METRICAS  = OUTPUT_DIR / "metricas.json"
+OUTPUT_ESCENARIOS= OUTPUT_DIR / "escenarios.json"
+OUTPUT_TRAZAS    = OUTPUT_DIR / "trazas.jsonl"
+OUTPUT_RED_HTML  = OUTPUT_DIR / "red_multicapa.html"
 
-# ── LLM ────────────────────────────────────────────────────────────
+# Crear carpeta output si no existe
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+# ── LLM ────────────────────────────────────────────────────────────────────────
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-LLM_MODEL    = "llama-3.3-70b-versatile"   # gratis en Groq
-TEMPERATURE  = 0
+LLM_MODEL    = "llama-3.3-70b-versatile"   # modelo gratuito en Groq
+LLM_TEMP     = 0.0                          # determinístico: misma entrada = misma salida
 
-# ── Umbrales ───────────────────────────────────────────────────────
-MAX_SEGMENTOS_POR_LLAMADA = 12   # fragmentos de PDF por llamada al LLM
-UMBRAL_FRAGILIDAD         = 0.3  # betweenness > esto = punto único de falla
-UMBRAL_CALIDAD_AUDITORIA  = 0.65 # score < esto → revisión humana obligatoria
+# ── Umbrales ───────────────────────────────────────────────────────────────────
+# Fragementos máximos que se envían al LLM por llamada (evita exceder contexto)
+MAX_SEGMENTOS_POR_LLAMADA = 15
+
+# Score mínimo del auditor para NO requerir revisión humana obligatoria
+UMBRAL_CALIDAD_AUDITOR = 0.70
+
+# Fuerza mínima de una prueba para considerarse "soporte real"
+UMBRAL_FUERZA_PRUEBA = 0.40
+
+# Umbral de betweenness para marcar un nodo como "punto único de falla"
+UMBRAL_BETWEENNESS_FALLA = 0.25

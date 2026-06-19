@@ -1,45 +1,72 @@
-# src/state.py
+"""
+state.py
+Define CaseState: el único diccionario que fluye por todos los agentes.
+Cada agente lee lo que necesita y devuelve solo los campos que modifica.
+"""
+
 from typing import TypedDict, Annotated
 import operator
 
 
 def _acumular(a: list, b: list) -> list:
-    """Reducer: acumula listas entre nodos sin sobrescribir."""
-    return a + b
+    """Reducer: acumula listas entre nodos en lugar de sobrescribir."""
+    return (a or []) + (b or [])
 
 
 class CaseState(TypedDict):
-    # ── Metadatos ─────────────────────────────────────────────────
-    case_id:  str
-    pdf_path: str
+    # ── Metadatos del caso ────────────────────────────────────────────────────
+    case_id:   str
+    pdf_path:  str
 
-    # ── Ingesta (intake) ──────────────────────────────────────────
-    segmentos: list[dict]   # [{frag_id, pagina, texto, hash}]
+    # ── Salida de intake ──────────────────────────────────────────────────────
+    # Lista de fragmentos: {"frag_id", "pagina", "texto", "hash"}
+    segmentos: list[dict]
 
-    # ── Extracción (extractor) ────────────────────────────────────
-    hechos:    list[dict]   # [{id, texto, fecha, actor, frag_id, confianza}]
-    actores:   list[dict]   # [{id, nombre, rol}]
-    cronologia: list[dict]  # [{fecha, evento, frag_id}]
+    # ── Salida de extractor ───────────────────────────────────────────────────
+    # Hechos: {"id", "texto", "fecha", "actor", "frag_id", "confianza"}
+    hechos: list[dict]
+    # Actores: {"id", "nombre", "rol", "frag_id"}
+    actores: list[dict]
+    # Cronología: {"fecha", "evento", "actor", "frag_id"}
+    cronologia: list[dict]
 
-    # ── Probatorio ────────────────────────────────────────────────
-    pruebas: list[dict]     # [{id, tipo, descripcion, estado, frag_id}]
+    # ── Salida de probatorio ──────────────────────────────────────────────────
+    # Pruebas: {"id", "tipo", "descripcion", "hecho_relacionado", "disponible", "fuerza", "frag_id"}
+    pruebas: list[dict]
+    # Vacíos: {"hecho_id", "descripcion", "accion_sugerida"}
+    vacios: list[dict]
 
-    # ── Normativo ─────────────────────────────────────────────────
-    normas: list[dict]      # [{id, texto, fuente}]
+    # ── Salida de normativo ───────────────────────────────────────────────────
+    # Normas: {"id", "texto", "fuente", "hecho_relacionado"}
+    normas: list[dict]
 
-    # ── Artefactos centrales ──────────────────────────────────────
-    matriz_hpn: list[dict]  # filas HPN validadas
-    grafo:      dict        # node_link_data de NetworkX
-    metricas:   dict        # indicadores calculados
+    # ── Artefacto central: Matriz HPN ─────────────────────────────────────────
+    # Filas HPN según esquema del proyecto
+    matriz_hpn: list[dict]
 
-    # ── Análisis estratégico ──────────────────────────────────────
-    ataques:   list[dict]   # adversarial: excepciones y objeciones
-    escenarios: list[dict]  # simulator: S1..Sn con antes/después
+    # ── Artefacto central: Red multicapa ─────────────────────────────────────
+    # Formato node_link_data de NetworkX: {"nodes": [...], "links": [...]}
+    grafo: dict
 
-    # ── Auditoría ─────────────────────────────────────────────────
-    auditoria:              list[dict]
-    revision_humana:        bool
-    trazas: Annotated[list[dict], _acumular]   # log acumulado de todos los nodos
+    # ── Métricas ──────────────────────────────────────────────────────────────
+    metricas: dict
 
-    # ── Control ───────────────────────────────────────────────────
-    errores: list[str]
+    # ── Análisis adversarial ──────────────────────────────────────────────────
+    # Ataques: {"tipo", "descripcion", "fila_hpn_afectada", "riesgo", "contramedida"}
+    ataques: list[dict]
+
+    # ── Escenarios de simulación ──────────────────────────────────────────────
+    # Escenarios: {"id", "nombre", "supuesto", "hechos_afectados",
+    #              "metricas_antes", "metricas_despues", "accion_sugerida"}
+    escenarios: list[dict]
+
+    # ── Auditoría ─────────────────────────────────────────────────────────────
+    reporte_auditoria: dict
+    revision_humana_requerida: bool
+
+    # ── Trazas acumuladas de TODOS los agentes ────────────────────────────────
+    # Annotated con _acumular para que cada agente AÑADA sin sobrescribir
+    trazas: Annotated[list[dict], _acumular]
+
+    # ── Errores capturados ────────────────────────────────────────────────────
+    errores: Annotated[list[str], _acumular]

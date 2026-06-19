@@ -1,0 +1,115 @@
+"""
+probatorio.py — Agente 3: Probatorio
+Tipo: LLM (Groq)
+Función: Cataloga pruebas disponibles, detecta vacíos y contradicciones.
+Entrada: hechos, segmentos
+Salida:  pruebas, vacios
+"""
+
+import json
+import datetime
+from langchain_groq import ChatGroq
+from langchain_core.prompts import ChatPromptTemplate
+from src.state import CaseState
+from src.tools.pdf_tools import texto_resumido
+from src.config import GROQ_API_KEY, LLM_MODEL, LLM_TEMP, MAX_SEGMENTOS_POR_LLAMADA
+
+PROMPT = ChatPromptTemplate.from_messages([
+    ("system", """Eres el Agente Probatorio de un sistema de análisis jurídico.
+
+Tu tarea es identificar todas las PRUEBAS mencionadas en el expediente y detectar VACÍOS probatorios.
+
+TIPOS DE PRUEBA: documento, contrato, correo, comunicacion, testimonio, peritaje, 
+                  audio, video, fotografia, factura, acta, certificado, otro.
+
+Para cada prueba indica:
+- Si está DISPONIBLE en el expediente o solo se menciona que falta/se necesita.
+- Su FUERZA probatoria estimada (0.0 a 1.0).
+- Si SOPORTA o CONTRADICE algún hecho identificado.
+
+REGLAS:
+- NUNCA inventes pruebas que no estén mencionadas en el expediente.
+- Si una prueba contradice un hecho, márcala como "contradice".
+- Los vacíos son hechos esenciales que NO tienen ninguna prueba que los soporte.
+
+Devuelve ÚNICAMENTE JSON válido, sin texto adicional:
+{{
+  "pruebas": [
+    {{
+      "id": "P001",
+      "tipo": "correo",
+      "descripcion": "correos de requerimiento enviados al demandado",
+      "hecho_relacionado": "H001",
+      "relacion": "soporta",
+      "disponible": true,
+      "fuerza": 0.75,
+      "frag_id": "frag-003"
+    }}
+  ],
+  "vacios": [
+    {{
+      "hecho_id": "H002",
+      "descripcion": "No hay prueba documental del nexo causal",
+      "accion_sugerida": "Solicitar peritaje técnico"
+    }}
+  ]
+}}"""),
+    ("human", """Hechos identificados:
+{hechos}
+
+Fragmentos del expediente:
+{fragmentos}"""),
+])
+
+
+def probatorio_node(state: CaseState) -> dict:
+    print("[probatorio]  Catalogando pruebas y vacíos...")
+
+    segmentos = state.get("segmentos", [])
+    hechos    = state.get("hechos", [])
+    errores   = []
+
+    try:
+        llm = ChatGroq(api_key=GROQ_API_KEY, model=LLM_MODEL, temperature=LLM_TEMP)
+        chain = PROMPT | llm
+
+        respuesta = chain.invoke({
+            "hechos":     json.dumps(hechos, ensure_ascii=False, indent=2),
+            "fragmentos": texto_resumido(segmentos, MAX_SEGMENTOS_POR_LLAMADA),
+        })
+        contenido = respuesta.content.strip()
+        if contenido.startswith("```"):
+            contenido = contenido.split("```")[1]
+            if contenido.startswith("json"):
+                contenido = contenido[4:]
+
+        datos = json.loads(contenido)
+
+    except json.JSONDecodeError as e:
+        errores.append(f"Error parseando JSON del probatorio: {e}")
+        datos = {"pruebas": [], "vacios": []}
+    except Exception as e:
+        errores.append(f"Error en probatorio: {e}")
+        datos = {"pruebas": [], "vacios": []}
+
+    pruebas = datos.get("pruebas", [])
+    vacios  = datos.get("vacios", [])
+
+    print(f"[probatorio]  ✓  {len(pruebas)} pruebas | {len(vacios)} vacíos críticos")
+
+    traza = {
+        "agente":    "probatorio",
+        "tipo":      "llm_groq",
+        "modelo":    LLM_MODEL,
+        "timestamp": datetime.datetime.now().isoformat(),
+        "pruebas_encontradas": len(pruebas),
+        "vacios_detectados":   len(vacios),
+        "errores":   errores,
+    }
+
+    return {
+        "pruebas": pruebas,
+        "vacios":  vacios,
+        "trazas":  [traza],
+        "errores": errores,
+    }

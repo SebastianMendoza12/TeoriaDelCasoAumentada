@@ -6,7 +6,7 @@ env/
 # Variables de entorno (NUNCA subir al repo)
 .env
 
-# Outputs generados en runtime
+# Artefactos generados en runtime
 output/
 
 # Python
@@ -15,17 +15,22 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+.eggs/
 
-# IDE
-.vscode/
-.idea/
-
-# Streamlit
+# Streamlit cache
 .streamlit/
 
 # pytest
 .pytest_cache/
 .coverage
 
+# IDE
+.vscode/
+.idea/
+*.swp
+
 # macOS
 .DS_Store
+
+# El PDF del expediente tampoco sube (puede tener info sensible)
+data/input/*.pdf
