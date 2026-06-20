@@ -1,12 +1,13 @@
 """
 network_builder.py — Agente 6: Constructor de Red Multicapa
 Tipo: Python puro + NetworkX (sin LLM)
-Función: Convierte la Matriz HPN en una red compleja multicapa.
-Entrada: matriz_hpn, actores
+Función: Convierte la Matriz HPN en una red compleja multicapa con las
+9 capas exigidas por el enunciado (hechos, pruebas, normas, precedentes,
+argumentos, riesgos, tiempo, actores, pretensiones).
+Entrada: matriz_hpn, actores, normas, cronologia
 Salida:  grafo (dict serializable)
 """
 
-import json
 import datetime
 from src.state import CaseState
 from src.tools.graph_tools import construir_grafo, grafo_a_dict, exportar_html
@@ -16,15 +17,16 @@ from src.config import OUTPUT_RED_HTML
 def network_builder_node(state: CaseState) -> dict:
     print("[network_builder]  Construyendo red multicapa...")
 
-    matriz  = state.get("matriz_hpn", [])
-    actores = state.get("actores", [])
-    errores = []
+    matriz     = state.get("matriz_hpn", [])
+    actores    = state.get("actores", [])
+    normas     = state.get("normas", [])
+    cronologia = state.get("cronologia", [])
+    errores    = []
 
     try:
-        G = construir_grafo(matriz, actores)
+        G = construir_grafo(matriz, actores, normas, cronologia)
         grafo_dict = grafo_a_dict(G)
 
-        # Exportar HTML interactivo (para el dashboard y entregable)
         try:
             exportar_html(G, str(OUTPUT_RED_HTML))
             print(f"[network_builder]  ✓  Red HTML exportada → {OUTPUT_RED_HTML}")
@@ -33,10 +35,10 @@ def network_builder_node(state: CaseState) -> dict:
 
         total_nodos   = G.number_of_nodes()
         total_aristas = G.number_of_edges()
-        capas = list({d.get("capa", "?") for _, d in G.nodes(data=True)})
+        capas = sorted({d.get("capa", "?") for _, d in G.nodes(data=True)})
 
         print(f"[network_builder]  ✓  {total_nodos} nodos | "
-              f"{total_aristas} aristas | capas: {capas}")
+              f"{total_aristas} aristas | capas ({len(capas)}): {capas}")
 
     except Exception as e:
         msg = f"Error en network_builder: {e}"
