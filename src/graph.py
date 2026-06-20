@@ -10,6 +10,7 @@ Uso:
 
 import json
 import datetime
+import pandas as pd
 from pathlib import Path
 
 from langgraph.graph import StateGraph, START, END
@@ -28,6 +29,8 @@ from src.agents.auditor              import auditor_node
 from src.agents.dashboard_node       import dashboard_node
 from src.agents.explanation_builder  import explanation_builder_node
 from src.agents.explanation_verifier import explanation_verifier_node
+
+from src.tools.report_export import generar_reporte
 
 from src.middleware.pre_completion_checklist import aplicar_checklist
 from src.middleware.loop_detection           import aplicar_loop_detection
@@ -104,6 +107,10 @@ def guardar_artefactos(estado: CaseState, checklist: dict, loop: dict) -> None:
         "total_filas": len(estado.get("matriz_hpn", [])),
         "filas":      estado.get("matriz_hpn", []),
     })
+    pd.json_normalize(estado.get("matriz_hpn", [])).to_csv(
+        OUTPUT_DIR / "matriz_hpn.csv", index=False
+    )
+    print("  💾  matriz_hpn.csv")
     _json(OUTPUT_GRAFO,      estado.get("grafo", {}))
     _json(OUTPUT_METRICAS,   estado.get("metricas", {}))
     _json(OUTPUT_ESCENARIOS, {
@@ -119,6 +126,8 @@ def guardar_artefactos(estado: CaseState, checklist: dict, loop: dict) -> None:
     _json(OUTPUT_CHECKLIST,      checklist)
     _json(OUTPUT_LOOP_DETECTION, loop)
     _jsonl(OUTPUT_TRAZAS,        estado.get("trazas", []))
+
+    generar_reporte()
 
     print("── Artefactos guardados ✓ ───────────────────────────────────────────\n")
 

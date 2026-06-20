@@ -46,7 +46,7 @@ expediente.pdf
 
 ## Arquitectura multiagente
 
-El sistema usa **LangGraph** para orquestar **11 agentes** con roles definidos y estado compartido. Cada agente tiene una responsabilidad única, salida auditable y registro de traza.
+El sistema usa **LangGraph** para orquestar **13 agentes** con roles definidos y estado compartido. Cada agente tiene una responsabilidad única, salida auditable y registro de traza.
 
 | Agente | Tipo | Función |
 |--------|------|---------|
@@ -61,6 +61,8 @@ El sistema usa **LangGraph** para orquestar **11 agentes** con roles definidos y
 | `simulator` | LLM (Groq) | Ejecuta escenarios de perturbación S1–S4 |
 | `auditor` | LLM (Groq) | Verifica fuentes, trazabilidad y coherencia |
 | `dashboard_node` | Python puro | Consolida artefactos, genera alertas y semáforo |
+| `explanation_builder` | LLM (Groq) | Explica POR QUÉ el sistema tomó cada decisión, citando fuente |
+| `explanation_verifier` | Python puro | Verifica que cada explicación tenga fuente real (árbitro de explicabilidad) |
 
 Los agentes `intake`, `network_builder`, `metrics` y `dashboard_node` son **determinísticos** (sin LLM). El resto usa **llama-3.3-70b** vía Groq (gratuito).
 
@@ -80,6 +82,11 @@ Todos se guardan en la carpeta `output/` al ejecutar el sistema:
 | `output/trazas.jsonl` | E3 | Log completo: agente, entrada, salida, timestamp |
 | `output/dashboard_data.json` | E8 | Resumen ejecutivo, alertas y preguntas sugeridas |
 | `output/red_multicapa.html` | E5 | Visualización interactiva de la red (PyVis) |
+| `output/matriz_hpn.csv` | E4 | Matriz HPN en formato CSV |
+| `output/explicaciones.json` | — | Explicaciones de decisiones + verificación |
+| `output/checklist.json` | — | Veredicto del PreCompletionChecklist |
+| `output/loop_detection.json` | — | Diagnóstico de loops en la ejecución |
+| `output/reporte_final.html` | E8 | Reporte exportable consolidado (resumen, matriz, métricas, escenarios) |
 
 ---
 

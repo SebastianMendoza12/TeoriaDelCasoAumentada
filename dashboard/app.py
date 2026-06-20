@@ -15,6 +15,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+import streamlit.components.v1 as components
 
 # ── Configuración ─────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -75,6 +76,14 @@ st.sidebar.warning(
     "Este sistema apoya la preparación, no sustituye el criterio profesional."
 )
 
+reporte_path = OUTPUT_DIR / "reporte_final.html"
+if reporte_path.exists():
+    st.sidebar.download_button(
+        "⬇️ Reporte completo (HTML)",
+        reporte_path.read_bytes(),
+        "reporte_final.html",
+        "text/html",
+    )
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SECCIÓN 0: CARGAR EXPEDIENTE (nueva — punto de entrada principal)
@@ -329,7 +338,7 @@ elif seccion == "🕸️ Red Multicapa":
     if red_html.exists():
         st.caption("Visualización interactiva — arrastra nodos, haz zoom.")
         with open(red_html, encoding="utf-8") as f:
-            st.iframe(f.read(), height=700)
+            components.html(f.read(), height=700, scrolling=True)
     else:
         st.warning("No se encontró `red_multicapa.html`. Ejecuta el sistema primero.")
 

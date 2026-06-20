@@ -215,6 +215,7 @@ def dashboard_node(state: CaseState) -> dict:
     print("[dashboard_node]  Consolidando artefactos para el dashboard...")
 
     errores = []
+    alertas, preguntas = [], []
     metricas_hpn = state.get("metricas", {}).get("hpn", {})
 
     try:

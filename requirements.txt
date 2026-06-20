@@ -10,8 +10,9 @@ pymupdf>=1.24.0
 pydantic>=2.7.0
 
 # Red compleja y métricas
-networkx>=3.3
+networkx>=3.3,<3.6
 pyvis>=0.3.2
+langchain-core>=0.3.0
 
 # Análisis de datos
 pandas>=2.2.0
