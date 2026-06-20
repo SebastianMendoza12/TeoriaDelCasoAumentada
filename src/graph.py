@@ -30,10 +30,9 @@ from src.agents.dashboard_node       import dashboard_node
 from src.agents.explanation_builder  import explanation_builder_node
 from src.agents.explanation_verifier import explanation_verifier_node
 
-from src.tools.report_export import generar_reporte
-
 from src.middleware.pre_completion_checklist import aplicar_checklist
 from src.middleware.loop_detection           import aplicar_loop_detection
+from src.middleware.memory_write_guard       import verificar_escritura
 
 from src.config import (
     PDF_PATH, OUTPUT_DIR,
@@ -107,10 +106,6 @@ def guardar_artefactos(estado: CaseState, checklist: dict, loop: dict) -> None:
         "total_filas": len(estado.get("matriz_hpn", [])),
         "filas":      estado.get("matriz_hpn", []),
     })
-    pd.json_normalize(estado.get("matriz_hpn", [])).to_csv(
-        OUTPUT_DIR / "matriz_hpn.csv", index=False
-    )
-    print("  💾  matriz_hpn.csv")
     _json(OUTPUT_GRAFO,      estado.get("grafo", {}))
     _json(OUTPUT_METRICAS,   estado.get("metricas", {}))
     _json(OUTPUT_ESCENARIOS, {
@@ -126,8 +121,6 @@ def guardar_artefactos(estado: CaseState, checklist: dict, loop: dict) -> None:
     _json(OUTPUT_CHECKLIST,      checklist)
     _json(OUTPUT_LOOP_DETECTION, loop)
     _jsonl(OUTPUT_TRAZAS,        estado.get("trazas", []))
-
-    generar_reporte()
 
     print("── Artefactos guardados ✓ ───────────────────────────────────────────\n")
 
@@ -170,12 +163,11 @@ def ejecutar(pdf_path: str = None) -> CaseState:
     graph = build_graph()
     estado_final = graph.invoke(estado_inicial)
 
-    # ── Middleware: Loop Detection ─────────────────────────────────────────────
+    # ── Middleware ────────────────────────────────────────────────────────────
     print("\n── Middleware ────────────────────────────────────────────────────────")
-    resultado_loop = aplicar_loop_detection(estado_final.get("trazas", []))
-
-    # ── Middleware: PreCompletion Checklist ───────────────────────────────────
+    resultado_loop      = aplicar_loop_detection(estado_final.get("trazas", []))
     resultado_checklist = aplicar_checklist(estado_final)
+    resultado_guard     = verificar_escritura(estado_final)
 
     # ── Guardar todo ──────────────────────────────────────────────────────────
     guardar_artefactos(estado_final, resultado_checklist, resultado_loop)
