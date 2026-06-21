@@ -28,7 +28,6 @@ from src.agents.simulator            import simulator_node
 from src.agents.auditor              import auditor_node
 from src.agents.dashboard_node       import dashboard_node
 from src.agents.explanation_builder  import explanation_builder_node
-from src.agents.explanation_verifier import explanation_verifier_node
 
 from src.middleware.pre_completion_checklist import aplicar_checklist
 from src.middleware.loop_detection           import aplicar_loop_detection
@@ -63,7 +62,6 @@ def build_graph():
     builder.add_node("auditor",               auditor_node)
     builder.add_node("dashboard_node",        dashboard_node)
     builder.add_node("explanation_builder",   explanation_builder_node)
-    builder.add_node("explanation_verifier",  explanation_verifier_node)
 
     # Flujo secuencial completo
     builder.add_edge(START,                  "intake")
@@ -78,8 +76,7 @@ def build_graph():
     builder.add_edge("simulator",            "auditor")
     builder.add_edge("auditor",              "dashboard_node")
     builder.add_edge("dashboard_node",       "explanation_builder")
-    builder.add_edge("explanation_builder",  "explanation_verifier")
-    builder.add_edge("explanation_verifier", END)
+    builder.add_edge("explanation_builder",  END)
 
     return builder.compile()
 

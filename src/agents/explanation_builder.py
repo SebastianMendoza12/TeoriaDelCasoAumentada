@@ -1,17 +1,23 @@
 """
-explanation_builder.py — Agente 12: ExplanationBuilder
-Tipo: LLM (Groq)
-Basado en: Capítulo 19 del documento deep_agents_harness_v3.pdf
+explanation_builder.py — Agente 12: ExplanationBuilder (+ verificación inline)
+Tipo: LLM (Groq) + verificación determinística en el mismo paso
+Basado en: Capítulos 19-20 del documento deep_agents_harness_v3.pdf
 
 Propósito: generar explicaciones legibles para el abogado de POR QUÉ
-el sistema tomó cada decisión relevante. No es un resumen — es trazabilidad
-narrativa: "el sistema marcó esta fila como vacio_critico PORQUE no
-encontró prueba en los fragmentos frag-003 a frag-007."
+el sistema tomó cada decisión relevante, y verificarlas de inmediato
+contra las fuentes reales del expediente.
 
-Dice:
-  "El ExplanationBuilder transforma el rastro de decisiones del agente
-   en lenguaje natural accesible para el usuario final. Cada explicación
-   debe referenciar la fuente que motivó la decisión, no solo describirla."
+NOTA DE DISEÑO (fix aplicado): originalmente la verificación corría en
+un nodo de LangGraph separado (explanation_verifier), leyendo
+state["explicaciones"] escrito por este nodo. En la práctica esa
+propagación entre nodos resultaba en una lista vacía al llegar al
+verificador, aunque el builder sí generaba explicaciones (confirmado
+con output/explicaciones.json quedando en [] pese al log "6
+explicaciones generadas"). Para eliminar esa dependencia frágil, la
+verificación ahora se ejecuta aquí mismo, en el mismo return de
+Python, sin pasar por otro paso del grafo. La función pura
+`verificar_explicaciones` sigue siendo la misma e independiente del
+LLM — solo cambió DÓNDE se llama, no CÓMO verifica.
 """
 
 import json
@@ -19,6 +25,7 @@ import datetime
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from src.state import CaseState
+from src.agents.explanation_verifier import verificar_explicaciones
 from src.config import GROQ_API_KEY, LLM_MODEL, LLM_TEMP
 
 PROMPT = ChatPromptTemplate.from_messages([
@@ -72,11 +79,11 @@ Genera explicaciones para las decisiones más importantes del sistema."""),
 def explanation_builder_node(state: CaseState) -> dict:
     print("[explanation_builder]  Generando explicaciones de decisiones...")
 
-    matriz   = state.get("matriz_hpn", [])
-    reporte  = state.get("reporte_auditoria", {})
-    errores  = []
+    matriz    = state.get("matriz_hpn", [])
+    segmentos = state.get("segmentos", [])
+    reporte   = state.get("reporte_auditoria", {})
+    errores   = []
 
-    # Semáforo viene del dashboard_data si existe, o se calcula
     metricas_hpn = state.get("metricas", {}).get("hpn", {})
     cob_prob = metricas_hpn.get("cobertura_probatoria", 0)
     cob_norm = metricas_hpn.get("cobertura_normativa", 0)
@@ -93,7 +100,6 @@ def explanation_builder_node(state: CaseState) -> dict:
     else:
         semaforo = "rojo"
 
-    # Resumen de la matriz para el prompt
     matriz_resumen = [
         {
             "id":               f.get("id"),
@@ -136,7 +142,7 @@ def explanation_builder_node(state: CaseState) -> dict:
     explicaciones = datos.get("explicaciones", [])
     print(f"[explanation_builder]  ✓  {len(explicaciones)} explicaciones generadas")
 
-    traza = {
+    traza_builder = {
         "agente":    "explanation_builder",
         "tipo":      "llm_groq",
         "modelo":    LLM_MODEL,
@@ -145,8 +151,39 @@ def explanation_builder_node(state: CaseState) -> dict:
         "errores":   errores,
     }
 
+    # ── Verificación INLINE (antes era un nodo separado del grafo) ───────
+    print("[explanation_verifier]  Verificando explicaciones...")
+    errores_verificacion = []
+    try:
+        reporte_explicabilidad = verificar_explicaciones(explicaciones, segmentos, matriz)
+        print(f"[explanation_verifier]  ✓  "
+              f"score_explicabilidad={reporte_explicabilidad['score_explicabilidad']} | "
+              f"aprobadas={reporte_explicabilidad['explicaciones_aprobadas']} | "
+              f"rechazadas={reporte_explicabilidad['explicaciones_rechazadas']}")
+    except Exception as e:
+        msg = f"Error en explanation_verifier: {e}"
+        errores_verificacion.append(msg)
+        print(f"[explanation_verifier]  ✗  {msg}")
+        reporte_explicabilidad = {
+            "total_explicaciones": len(explicaciones),
+            "score_explicabilidad": 0,
+            "error": msg,
+        }
+
+    traza_verificador = {
+        "agente":    "explanation_verifier",
+        "tipo":      "python_puro_determinisico",
+        "timestamp": datetime.datetime.now().isoformat(),
+        "score_explicabilidad": reporte_explicabilidad.get("score_explicabilidad", 0),
+        "errores":   errores_verificacion,
+    }
+
+    metricas_actuales = state.get("metricas", {})
+    metricas_actuales["explicabilidad"] = reporte_explicabilidad
+
     return {
         "explicaciones": explicaciones,
-        "trazas":        [traza],
-        "errores":       errores,
+        "metricas":      metricas_actuales,
+        "trazas":        [traza_builder, traza_verificador],
+        "errores":       errores + errores_verificacion,
     }
