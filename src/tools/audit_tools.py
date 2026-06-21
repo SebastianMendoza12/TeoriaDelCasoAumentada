@@ -1,54 +1,10 @@
 """
 audit_tools.py
-Herramientas mínimas de auditoría y trazabilidad.
-Sin LLM — determinísticas y reproducibles.
-Listadas en Sección 10.6 del enunciado: registrar_traza,
-verificar_no_alucinacion.
+Herramienta determinística de verificación anti-alucinación.
+Sin LLM — reproducible. Se usa dentro de hpn_builder para confirmar que
+cada hecho de una fila tenga respaldo léxico real en el expediente,
+antes de que el LLM pueda marcarlo como soporte suficiente.
 """
-
-import hashlib
-import datetime
-import json
-from pathlib import Path
-from src.config import OUTPUT_TRAZAS
-
-
-def registrar_traza(
-    agente: str,
-    accion: str,
-    entrada: dict,
-    salida: dict,
-    herramienta: str = "",
-    errores: list = None,
-) -> dict:
-    """
-    Registra un evento de traza estructurado en trazas.jsonl.
-    Incluye hash de entrada y salida para detectar repeticiones.
-    """
-    hash_entrada = hashlib.md5(
-        json.dumps(entrada, sort_keys=True, default=str).encode()
-    ).hexdigest()[:8]
-    hash_salida = hashlib.md5(
-        json.dumps(salida, sort_keys=True, default=str).encode()
-    ).hexdigest()[:8]
-
-    traza = {
-        "agente":       agente,
-        "accion":       accion,
-        "herramienta":  herramienta,
-        "timestamp":    datetime.datetime.now().isoformat(),
-        "hash_entrada": hash_entrada,
-        "hash_salida":  hash_salida,
-        "errores":      errores or [],
-    }
-
-    try:
-        with open(OUTPUT_TRAZAS, "a", encoding="utf-8") as f:
-            f.write(json.dumps(traza, ensure_ascii=False) + "\n")
-    except Exception:
-        pass  # No interrumpir el flujo si falla el log
-
-    return traza
 
 
 def verificar_no_alucinacion(
@@ -58,7 +14,7 @@ def verificar_no_alucinacion(
 ) -> dict:
     """
     Verifica que una afirmación tenga respaldo en los fragmentos fuente.
-    Usa búsqueda de palabras clave (sin LLM — determinístico).
+    Usa coincidencia de palabras clave (sin LLM — determinístico).
     Si la similitud con alguna fuente supera el umbral, se considera
     respaldada. Si no, se marca como posible alucinación.
 
@@ -81,7 +37,6 @@ def verificar_no_alucinacion(
         }
 
     palabras = set(afirmacion.lower().split())
-    # Filtrar stopwords básicas
     stopwords = {"el", "la", "los", "las", "un", "una", "de", "del", "en",
                  "y", "a", "que", "se", "no", "por", "con", "para", "es",
                  "su", "al", "lo", "le", "más", "o", "pero", "si"}

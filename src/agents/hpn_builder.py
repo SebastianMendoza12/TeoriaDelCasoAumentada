@@ -12,6 +12,7 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from src.state import CaseState
 from src.tools.hpn_tools import validar_fila
+from src.tools.audit_tools import verificar_no_alucinacion
 from src.config import GROQ_API_KEY, LLM_MODEL, LLM_TEMP
 
 PROMPT = ChatPromptTemplate.from_messages([
@@ -93,6 +94,7 @@ def hpn_builder_node(state: CaseState) -> dict:
     pruebas = state.get("pruebas", [])
     normas  = state.get("normas", [])
     vacios  = state.get("vacios", [])
+    segmentos = state.get("segmentos", [])
     errores = []
 
     try:
@@ -128,6 +130,13 @@ def hpn_builder_node(state: CaseState) -> dict:
 
     for fila in filas_brutas:
         resultado = validar_fila(fila)
+        hecho_texto = fila.get("hecho", {}).get("texto", "") if isinstance(fila.get("hecho"), dict) else ""
+        chequeo_alucinacion = verificar_no_alucinacion(hecho_texto, segmentos)
+        if not chequeo_alucinacion["respaldada"]:
+            resultado["errores"] = resultado.get("errores", []) + [
+                f"Posible alucinación en 'hecho': {chequeo_alucinacion['advertencia']}"
+            ]
+            resultado["valida"] = False
         if not resultado["valida"]:
             fila["errores_validacion"] = resultado["errores"]
             fila["estado"] = "pendiente"        # degradar estado

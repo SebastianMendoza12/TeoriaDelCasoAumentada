@@ -42,7 +42,7 @@ from src.config import (
 OUTPUT_EXPLICACIONES   = OUTPUT_DIR / "explicaciones.json"
 OUTPUT_CHECKLIST       = OUTPUT_DIR / "checklist.json"
 OUTPUT_LOOP_DETECTION  = OUTPUT_DIR / "loop_detection.json"
-
+OUTPUT_MEMORY_GUARD    = OUTPUT_DIR / "memory_guard.json"
 
 # ── Construcción del grafo ────────────────────────────────────────────────────
 
@@ -83,7 +83,7 @@ def build_graph():
 
 # ── Persistencia de artefactos ────────────────────────────────────────────────
 
-def guardar_artefactos(estado: CaseState, checklist: dict, loop: dict) -> None:
+def guardar_artefactos(estado: CaseState, checklist: dict, loop: dict, guard: dict) -> None:
     def _json(ruta, datos):
         with open(ruta, "w", encoding="utf-8") as f:
             json.dump(datos, f, ensure_ascii=False, indent=2)
@@ -115,9 +115,18 @@ def guardar_artefactos(estado: CaseState, checklist: dict, loop: dict) -> None:
         "timestamp":     datetime.datetime.now().isoformat(),
         "explicaciones": estado.get("explicaciones", []),
     })
+    pd.json_normalize(estado.get("matriz_hpn", [])).to_csv(
+        OUTPUT_DIR / "matriz_hpn.csv", index=False
+    )
+    print("  💾  matriz_hpn.csv")
+
     _json(OUTPUT_CHECKLIST,      checklist)
     _json(OUTPUT_LOOP_DETECTION, loop)
+    _json(OUTPUT_MEMORY_GUARD,   guard)
     _jsonl(OUTPUT_TRAZAS,        estado.get("trazas", []))
+
+    from src.tools.report_export import generar_reporte
+    generar_reporte()
 
     print("── Artefactos guardados ✓ ───────────────────────────────────────────\n")
 
@@ -167,7 +176,7 @@ def ejecutar(pdf_path: str = None) -> CaseState:
     resultado_guard     = verificar_escritura(estado_final)
 
     # ── Guardar todo ──────────────────────────────────────────────────────────
-    guardar_artefactos(estado_final, resultado_checklist, resultado_loop)
+    guardar_artefactos(estado_final, resultado_checklist, resultado_loop, resultado_guard)
 
     # ── Resumen final ─────────────────────────────────────────────────────────
     print("═" * 60)
