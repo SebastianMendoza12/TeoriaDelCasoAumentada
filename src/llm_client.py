@@ -2,13 +2,13 @@
 Cliente LLM centralizado.
 
 Orden de uso:
-1. Groq, si existe GROQ_API_KEY.
-2. Cerebras, si Groq falla por rate limit y existe CEREBRAS_API_KEY.
-3. Cerebras directo, si no hay GROQ_API_KEY.
+1. Cerebras (gratuito, límites más altos), si existe CEREBRAS_API_KEY.
+2. Groq (fallback), si Cerebras falla y existe GROQ_API_KEY.
+3. Groq directo, si no hay CEREBRAS_API_KEY.
 
 No hay llaves "gratis sin limite" garantizadas: cada proveedor puede aplicar
-cuotas. Este cliente evita que un 429 de Groq rompa toda la corrida cuando
-hay un proveedor de respaldo configurado por el usuario.
+cuotas. Cerebras es el principal por tener límites más altos; Groq actúa
+como respaldo.
 """
 
 import time
@@ -57,17 +57,17 @@ def get_llm(temperature: float = None):
     """Devuelve el primer LLM disponible segun las llaves configuradas."""
     temp = temperature if temperature is not None else LLM_TEMP
 
-    if GROQ_API_KEY:
-        return _crear_groq(temp)
-
     if CEREBRAS_API_KEY:
         return _crear_cerebras(temp)
 
+    if GROQ_API_KEY:
+        return _crear_groq(temp)
+
     raise RuntimeError(
         "No hay API key configurada.\n"
-        "Agrega GROQ_API_KEY o CEREBRAS_API_KEY en tu archivo .env\n"
-        "  Groq:     https://console.groq.com\n"
-        "  Cerebras: https://cloud.cerebras.ai"
+        "Agrega CEREBRAS_API_KEY o GROQ_API_KEY en tu archivo .env\n"
+        "  Cerebras: https://cloud.cerebras.ai\n"
+        "  Groq:     https://console.groq.com"
     )
 
 
@@ -80,10 +80,10 @@ def invoke_llm(prompt, inputs: dict, temperature: float = None):
     temp = temperature if temperature is not None else LLM_TEMP
     intentos = []
 
-    if GROQ_API_KEY:
-        intentos.append(("groq", LLM_MODEL, lambda: _crear_groq(temp)))
     if CEREBRAS_API_KEY:
         intentos.append(("cerebras", CEREBRAS_MODEL, lambda: _crear_cerebras(temp)))
+    if GROQ_API_KEY:
+        intentos.append(("groq", LLM_MODEL, lambda: _crear_groq(temp)))
 
     if not intentos:
         raise RuntimeError(
@@ -93,33 +93,45 @@ def invoke_llm(prompt, inputs: dict, temperature: float = None):
 
     ultimo_error = None
     for indice, (proveedor, modelo, crear_llm) in enumerate(intentos):
-        try:
-            if PAUSA_ENTRE_LLAMADAS:
-                time.sleep(PAUSA_ENTRE_LLAMADAS if indice == 0 else 1)
-            chain = prompt | crear_llm()
-            respuesta = chain.invoke(inputs)
-            return respuesta, {"proveedor": proveedor, "modelo": modelo}
-        except Exception as exc:
-            ultimo_error = exc
-            hay_siguiente = indice + 1 < len(intentos)
-            if proveedor == "groq" and hay_siguiente and _es_rate_limit(exc):
-                print("  Rate limit en Groq; reintentando con Cerebras...")
-                continue
-            raise
+        reintentos_locales = 2 if proveedor == "cerebras" else 1
+        for reintento in range(reintentos_locales):
+            try:
+                espera = (PAUSA_ENTRE_LLAMADAS if indice == 0 else 1) * (1 + reintento)
+                if PAUSA_ENTRE_LLAMADAS:
+                    time.sleep(espera)
+                chain = prompt | crear_llm()
+                respuesta = chain.invoke(inputs)
+                return respuesta, {"proveedor": proveedor, "modelo": modelo}
+            except Exception as exc:
+                ultimo_error = exc
+                es_rate_limit = _es_rate_limit(exc)
+                # Cerebras con rate limit → reintentar
+                if proveedor == "cerebras" and es_rate_limit and reintento < 2:
+                    print(f"  Cerebras ocupado; reintento {reintento + 1}/3...")
+                    continue
+                # Cerebras falló (cualquier error) → pasar a Groq
+                if proveedor == "cerebras" and indice + 1 < len(intentos):
+                    print("  Cerebras falló; usando Groq como respaldo...")
+                    break
+                # Groq falló → no hay más respaldo
+                raise
+        else:
+            continue
+        break
 
     raise ultimo_error
 
 
-def invoke_con_fallback(chain_groq, chain_cerebras, inputs: dict) -> object:
+def invoke_con_fallback(chain_cerebras, chain_groq, inputs: dict) -> object:
     """
-    Compatibilidad con codigo anterior: intenta Groq y usa Cerebras si hay 429.
+    Compatibilidad con codigo anterior: intenta Cerebras y usa Groq si falla.
     """
     try:
         time.sleep(PAUSA_ENTRE_LLAMADAS)
-        return chain_groq.invoke(inputs)
+        return chain_cerebras.invoke(inputs)
     except Exception as exc:
-        if _es_rate_limit(exc) and CEREBRAS_API_KEY:
-            print("  Rate limit en Groq; usando Cerebras como fallback...")
+        if _es_rate_limit(exc) and GROQ_API_KEY:
+            print("  Cerebras falló; usando Groq como respaldo...")
             time.sleep(5)
-            return chain_cerebras.invoke(inputs)
+            return chain_groq.invoke(inputs)
         raise

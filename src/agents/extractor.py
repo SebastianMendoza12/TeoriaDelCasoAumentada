@@ -28,6 +28,7 @@ REGLAS ESTRICTAS:
 - Cada hecho debe referenciar el frag_id de la página donde aparece.
 - Si no puedes determinar una fecha, usa null.
 - Si la confianza en la extracción es baja, asígnale un valor menor.
+- Usa SOLO los frag_id de esta lista: {frag_ids}. NO inventes frag_id nuevos.
 
 Devuelve ÚNICAMENTE un JSON válido con esta estructura exacta, sin texto adicional:
 {{
@@ -59,7 +60,7 @@ Devuelve ÚNICAMENTE un JSON válido con esta estructura exacta, sin texto adici
     }}
   ]
 }}"""),
-    ("human", "Fragmentos del expediente:\n\n{fragmentos}"),
+    ("human", "Fragmentos del expediente:\n\n{fragmentos}\n\nfrag_id válidos: {frag_ids}"),
 ])
 
 
@@ -76,9 +77,15 @@ def extractor_node(state: CaseState) -> dict:
                 "trazas": [{"agente": "extractor", "error": "sin segmentos"}],
                 "errores": errores}
 
+    frag_ids_reales = sorted({s["frag_id"] for s in segmentos})
+    frag_ids_str = ", ".join(frag_ids_reales)
+
     try:
         fragmentos = texto_resumido(segmentos, MAX_SEGMENTOS_POR_LLAMADA)
-        respuesta, llm_meta = invoke_llm(PROMPT, {"fragmentos": fragmentos})
+        respuesta, llm_meta = invoke_llm(PROMPT, {
+            "fragmentos": fragmentos,
+            "frag_ids": frag_ids_str,
+        })
         contenido = respuesta.content.strip()
 
         # Limpiar posibles bloques markdown del LLM
@@ -99,6 +106,12 @@ def extractor_node(state: CaseState) -> dict:
     hechos     = datos.get("hechos", [])
     actores    = datos.get("actores", [])
     cronologia = datos.get("cronologia", [])
+
+    # Filtrar frag_id inválidos (el LLM a veces inventa)
+    for lista in [hechos, actores, cronologia]:
+        for item in lista:
+            if item.get("frag_id") and item["frag_id"] not in frag_ids_reales:
+                item["frag_id"] = None
 
     print(f"[extractor]  ✓  {len(hechos)} hechos | {len(actores)} actores | {len(cronologia)} eventos")
 

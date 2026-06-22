@@ -50,4 +50,4 @@ UMBRAL_BETWEENNESS_FALLA  = 0.25
 
 # ── Pausa entre llamadas al LLM (segundos) ────────────────────────────────────
 # Reduce el riesgo de rate limit en Groq sin necesitar fallback
-PAUSA_ENTRE_LLAMADAS = 3
+PAUSA_ENTRE_LLAMADAS = 1

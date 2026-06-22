@@ -31,6 +31,7 @@ REGLAS:
 - NUNCA inventes pruebas que no estén mencionadas en el expediente.
 - Si una prueba contradice un hecho, márcala como "contradice".
 - Los vacíos son hechos esenciales que NO tienen ninguna prueba que los soporte.
+- Usa SOLO los frag_id de esta lista: {frag_ids}. NO inventes frag_id nuevos.
 
 Devuelve ÚNICAMENTE JSON válido, sin texto adicional:
 {{
@@ -58,7 +59,9 @@ Devuelve ÚNICAMENTE JSON válido, sin texto adicional:
 {hechos}
 
 Fragmentos del expediente:
-{fragmentos}"""),
+{fragmentos}
+
+frag_id válidos: {frag_ids}"""),
 ])
 
 
@@ -70,10 +73,14 @@ def probatorio_node(state: CaseState) -> dict:
     errores   = []
     llm_meta = {"proveedor": "no_ejecutado", "modelo": "sin_modelo"}
 
+    frag_ids_reales = sorted({s["frag_id"] for s in segmentos}) if segmentos else []
+    frag_ids_str = ", ".join(frag_ids_reales)
+
     try:
         respuesta, llm_meta = invoke_llm(PROMPT, {
             "hechos":     json.dumps(hechos, ensure_ascii=False, indent=2),
             "fragmentos": texto_resumido(segmentos, MAX_SEGMENTOS_POR_LLAMADA),
+            "frag_ids":   frag_ids_str,
         })
         contenido = respuesta.content.strip()
         if contenido.startswith("```"):
@@ -92,6 +99,11 @@ def probatorio_node(state: CaseState) -> dict:
 
     pruebas = datos.get("pruebas", [])
     vacios  = datos.get("vacios", [])
+
+    # Filtrar frag_id inválidos
+    for p in pruebas:
+        if p.get("frag_id") and p["frag_id"] not in frag_ids_reales:
+            p["frag_id"] = None
 
     print(f"[probatorio]  ✓  {len(pruebas)} pruebas | {len(vacios)} vacíos críticos")
 

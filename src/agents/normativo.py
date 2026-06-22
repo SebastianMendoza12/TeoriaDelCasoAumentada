@@ -32,6 +32,7 @@ REGLAS CRÍTICAS:
 - Marca como "inferida" si la deduces del tipo de caso. Sé conservador.
 - NUNCA inventes números de artículos o leyes específicas que no estén en el texto.
 - Si no hay norma clara para un hecho, indícalo en la lista de vacíos normativos.
+- Usa SOLO los frag_id de esta lista: {frag_ids}. NO inventes frag_id nuevos.
 
 Devuelve ÚNICAMENTE JSON válido, sin texto adicional:
 {{
@@ -57,7 +58,9 @@ Devuelve ÚNICAMENTE JSON válido, sin texto adicional:
 {hechos}
 
 Fragmentos del expediente:
-{fragmentos}"""),
+{fragmentos}
+
+frag_id válidos: {frag_ids}"""),
 ])
 
 
@@ -69,10 +72,14 @@ def normativo_node(state: CaseState) -> dict:
     errores   = []
     llm_meta = {"proveedor": "no_ejecutado", "modelo": "sin_modelo"}
 
+    frag_ids_reales = sorted({s["frag_id"] for s in segmentos}) if segmentos else []
+    frag_ids_str = ", ".join(frag_ids_reales)
+
     try:
         respuesta, llm_meta = invoke_llm(PROMPT, {
             "hechos":     json.dumps(hechos, ensure_ascii=False, indent=2),
             "fragmentos": texto_resumido(segmentos, MAX_SEGMENTOS_POR_LLAMADA),
+            "frag_ids":   frag_ids_str,
         })
         contenido = respuesta.content.strip()
         if contenido.startswith("```"):
@@ -90,6 +97,12 @@ def normativo_node(state: CaseState) -> dict:
         datos = {"normas": [], "vacios_normativos": []}
 
     normas = datos.get("normas", [])
+
+    # Filtrar frag_id inválidos
+    for n in normas:
+        if n.get("frag_id") and n["frag_id"] not in frag_ids_reales:
+            n["frag_id"] = None
+
     print(f"[normativo]  ✓  {len(normas)} normas identificadas")
 
     traza = {
