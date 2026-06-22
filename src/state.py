@@ -63,6 +63,7 @@ class CaseState(TypedDict):
     # ── Auditoría ─────────────────────────────────────────────────────────────
     reporte_auditoria: dict
     revision_humana_requerida: bool
+    explicaciones: list[dict]
 
     # ── Trazas acumuladas de TODOS los agentes ────────────────────────────────
     # Annotated con _acumular para que cada agente AÑADA sin sobrescribir

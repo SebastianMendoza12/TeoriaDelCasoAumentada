@@ -8,12 +8,11 @@ Salida:  matriz_hpn
 
 import json
 import datetime
-from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from src.state import CaseState
 from src.tools.hpn_tools import validar_fila
 from src.tools.audit_tools import verificar_no_alucinacion
-from src.config import GROQ_API_KEY, LLM_MODEL, LLM_TEMP
+from src.llm_client import invoke_llm
 
 PROMPT = ChatPromptTemplate.from_messages([
     ("system", """Eres el Agente Constructor de la Matriz HPN (Hecho-Prueba-Norma).
@@ -96,12 +95,10 @@ def hpn_builder_node(state: CaseState) -> dict:
     vacios  = state.get("vacios", [])
     segmentos = state.get("segmentos", [])
     errores = []
+    llm_meta = {"proveedor": "no_ejecutado", "modelo": "sin_modelo"}
 
     try:
-        llm = ChatGroq(api_key=GROQ_API_KEY, model=LLM_MODEL, temperature=LLM_TEMP)
-        chain = PROMPT | llm
-
-        respuesta = chain.invoke({
+        respuesta, llm_meta = invoke_llm(PROMPT, {
             "hechos":  json.dumps(hechos,  ensure_ascii=False, indent=2),
             "pruebas": json.dumps(pruebas, ensure_ascii=False, indent=2),
             "normas":  json.dumps(normas,  ensure_ascii=False, indent=2),
@@ -150,8 +147,8 @@ def hpn_builder_node(state: CaseState) -> dict:
 
     traza = {
         "agente":    "hpn_builder",
-        "tipo":      "llm_groq + validacion_deterministica",
-        "modelo":    LLM_MODEL,
+        "tipo":      f"llm_{llm_meta['proveedor']} + validacion_deterministica",
+        "modelo":    llm_meta["modelo"],
         "timestamp": datetime.datetime.now().isoformat(),
         "filas_generadas":  len(filas_brutas),
         "filas_validas":    len(filas_validadas) - errores_validacion,

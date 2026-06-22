@@ -127,7 +127,7 @@ pip install -r requirements.txt
 
 ### 4. Configurar variables de entorno
 
-Copia el archivo de ejemplo y agrega tu API key de Groq:
+Copia el archivo de ejemplo y agrega tus API keys. Groq se usa como proveedor principal; Cerebras es opcional y funciona como respaldo si Groq responde con rate limit.
 
 ```bash
 cp .env.example .env
@@ -137,6 +137,7 @@ Edita `.env`:
 
 ```env
 GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+CEREBRAS_API_KEY=csk_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 Para obtener tu API key gratuita: [console.groq.com](https://console.groq.com) → Create API Key.

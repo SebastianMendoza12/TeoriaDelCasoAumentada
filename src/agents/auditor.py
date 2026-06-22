@@ -9,10 +9,10 @@ Salida:  reporte_auditoria, revision_humana_requerida
 
 import json
 import datetime
-from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from src.state import CaseState
-from src.config import GROQ_API_KEY, LLM_MODEL, LLM_TEMP, UMBRAL_CALIDAD_AUDITOR
+from src.config import UMBRAL_CALIDAD_AUDITOR
+from src.llm_client import invoke_llm
 
 PROMPT = ChatPromptTemplate.from_messages([
     ("system", """Eres el Agente Auditor INDEPENDIENTE de un sistema de análisis jurídico.
@@ -71,6 +71,7 @@ def auditor_node(state: CaseState) -> dict:
     segmentos = state.get("segmentos", [])
     trazas    = state.get("trazas", [])
     errores   = []
+    llm_meta = {"proveedor": "no_ejecutado", "modelo": "sin_modelo"}
 
     # Resumen de fragmentos (solo primeras líneas de cada página)
     fragmentos_resumen = "\n".join(
@@ -86,10 +87,7 @@ def auditor_node(state: CaseState) -> dict:
     )
 
     try:
-        llm = ChatGroq(api_key=GROQ_API_KEY, model=LLM_MODEL, temperature=LLM_TEMP)
-        chain = PROMPT | llm
-
-        respuesta = chain.invoke({
+        respuesta, llm_meta = invoke_llm(PROMPT, {
             "matriz":            json.dumps(matriz, ensure_ascii=False, indent=2),
             "fragmentos_resumen": fragmentos_resumen,
             "trazas_resumen":    trazas_resumen,
@@ -129,8 +127,8 @@ def auditor_node(state: CaseState) -> dict:
 
     traza = {
         "agente":    "auditor",
-        "tipo":      "llm_groq_independiente",
-        "modelo":    LLM_MODEL,
+        "tipo":      f"llm_{llm_meta['proveedor']}_independiente",
+        "modelo":    llm_meta["modelo"],
         "timestamp": datetime.datetime.now().isoformat(),
         "score_calidad": score,
         "alertas_generadas": n_alertas,

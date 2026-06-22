@@ -8,11 +8,11 @@ Salida:  pruebas, vacios
 
 import json
 import datetime
-from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from src.state import CaseState
 from src.tools.pdf_tools import texto_resumido
-from src.config import GROQ_API_KEY, LLM_MODEL, LLM_TEMP, MAX_SEGMENTOS_POR_LLAMADA
+from src.config import MAX_SEGMENTOS_POR_LLAMADA
+from src.llm_client import invoke_llm
 
 PROMPT = ChatPromptTemplate.from_messages([
     ("system", """Eres el Agente Probatorio de un sistema de análisis jurídico.
@@ -68,12 +68,10 @@ def probatorio_node(state: CaseState) -> dict:
     segmentos = state.get("segmentos", [])
     hechos    = state.get("hechos", [])
     errores   = []
+    llm_meta = {"proveedor": "no_ejecutado", "modelo": "sin_modelo"}
 
     try:
-        llm = ChatGroq(api_key=GROQ_API_KEY, model=LLM_MODEL, temperature=LLM_TEMP)
-        chain = PROMPT | llm
-
-        respuesta = chain.invoke({
+        respuesta, llm_meta = invoke_llm(PROMPT, {
             "hechos":     json.dumps(hechos, ensure_ascii=False, indent=2),
             "fragmentos": texto_resumido(segmentos, MAX_SEGMENTOS_POR_LLAMADA),
         })
@@ -99,8 +97,8 @@ def probatorio_node(state: CaseState) -> dict:
 
     traza = {
         "agente":    "probatorio",
-        "tipo":      "llm_groq",
-        "modelo":    LLM_MODEL,
+        "tipo":      f"llm_{llm_meta['proveedor']}",
+        "modelo":    llm_meta["modelo"],
         "timestamp": datetime.datetime.now().isoformat(),
         "pruebas_encontradas": len(pruebas),
         "vacios_detectados":   len(vacios),

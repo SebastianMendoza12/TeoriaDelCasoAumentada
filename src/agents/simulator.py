@@ -12,12 +12,11 @@ Salida:  escenarios
 import json
 import datetime
 import copy
-from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from src.state import CaseState
 from src.tools.hpn_tools import calcular_metricas_hpn
 from src.tools.graph_tools import construir_grafo, calcular_metricas_red
-from src.config import GROQ_API_KEY, LLM_MODEL, LLM_TEMP
+from src.llm_client import invoke_llm
 
 # Los 4 escenarios mínimos exigidos por el enunciado (Tabla 5)
 ESCENARIOS_BASE = [
@@ -185,9 +184,7 @@ def simulator_node(state: CaseState) -> dict:
     cronologia = state.get("cronologia", [])
     metricas   = state.get("metricas", {})
     errores    = []
-
-    llm   = ChatGroq(api_key=GROQ_API_KEY, model=LLM_MODEL, temperature=0.1)
-    chain = PROMPT_ESCENARIO | llm
+    proveedores_usados = set()
 
     metricas_hpn_antes = metricas.get("hpn", {})
     metricas_red_antes = metricas.get("red", {})
@@ -219,14 +216,15 @@ def simulator_node(state: CaseState) -> dict:
 
         # ── Análisis cualitativo del LLM, anclado a métricas reales ────────
         try:
-            respuesta = chain.invoke({
+            respuesta, llm_meta = invoke_llm(PROMPT_ESCENARIO, {
                 "escenario":            json.dumps(escenario, ensure_ascii=False),
                 "elemento_perturbado":  elemento_perturbado or "ninguno identificado",
                 "metricas_hpn_antes":   json.dumps(metricas_hpn_antes, ensure_ascii=False, indent=2),
                 "metricas_hpn_despues": json.dumps(metricas_hpn_despues, ensure_ascii=False, indent=2),
                 "metricas_red_antes":   json.dumps(metricas_red_antes, ensure_ascii=False, indent=2, default=str),
                 "metricas_red_despues": json.dumps(metricas_red_despues, ensure_ascii=False, indent=2, default=str),
-            })
+            }, temperature=0.1)
+            proveedores_usados.add(f"{llm_meta['proveedor']}:{llm_meta['modelo']}")
             contenido = respuesta.content.strip()
             if contenido.startswith("```"):
                 contenido = contenido.split("```")[1]
@@ -263,8 +261,8 @@ def simulator_node(state: CaseState) -> dict:
 
     traza = {
         "agente":    "simulator",
-        "tipo":      "perturbacion_deterministica + llm_groq",
-        "modelo":    LLM_MODEL,
+        "tipo":      "perturbacion_deterministica + llm_fallback",
+        "modelo":    ", ".join(sorted(proveedores_usados)) or "sin_modelo",
         "timestamp": datetime.datetime.now().isoformat(),
         "escenarios_simulados": len(escenarios_resultado),
         "errores":   errores,

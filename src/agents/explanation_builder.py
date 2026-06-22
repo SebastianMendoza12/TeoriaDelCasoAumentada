@@ -22,11 +22,11 @@ LLM — solo cambió DÓNDE se llama, no CÓMO verifica.
 
 import json
 import datetime
-from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from src.state import CaseState
 from src.agents.explanation_verifier import verificar_explicaciones
-from src.config import GROQ_API_KEY, LLM_MODEL, LLM_TEMP
+from src.config import OUTPUT_DIR
+from src.llm_client import invoke_llm
 
 PROMPT = ChatPromptTemplate.from_messages([
     ("system", """Eres el Agente ExplanationBuilder de un sistema de análisis jurídico.
@@ -83,6 +83,7 @@ def explanation_builder_node(state: CaseState) -> dict:
     segmentos = state.get("segmentos", [])
     reporte   = state.get("reporte_auditoria", {})
     errores   = []
+    llm_meta = {"proveedor": "no_ejecutado", "modelo": "sin_modelo"}
 
     metricas_hpn = state.get("metricas", {}).get("hpn", {})
     cob_prob = metricas_hpn.get("cobertura_probatoria", 0)
@@ -115,10 +116,7 @@ def explanation_builder_node(state: CaseState) -> dict:
     ]
 
     try:
-        llm = ChatGroq(api_key=GROQ_API_KEY, model=LLM_MODEL, temperature=LLM_TEMP)
-        chain = PROMPT | llm
-
-        respuesta = chain.invoke({
+        respuesta, llm_meta = invoke_llm(PROMPT, {
             "matriz_resumen":  json.dumps(matriz_resumen, ensure_ascii=False, indent=2),
             "reporte_auditor": json.dumps(reporte, ensure_ascii=False, indent=2),
             "semaforo":        semaforo,
@@ -144,8 +142,8 @@ def explanation_builder_node(state: CaseState) -> dict:
 
     traza_builder = {
         "agente":    "explanation_builder",
-        "tipo":      "llm_groq",
-        "modelo":    LLM_MODEL,
+        "tipo":      f"llm_{llm_meta['proveedor']}",
+        "modelo":    llm_meta["modelo"],
         "timestamp": datetime.datetime.now().isoformat(),
         "explicaciones_generadas": len(explicaciones),
         "errores":   errores,
@@ -180,6 +178,17 @@ def explanation_builder_node(state: CaseState) -> dict:
 
     metricas_actuales = state.get("metricas", {})
     metricas_actuales["explicabilidad"] = reporte_explicabilidad
+
+    try:
+        with open(OUTPUT_DIR / "explicaciones.json", "w", encoding="utf-8") as f:
+            json.dump({
+                "case_id":       state.get("case_id"),
+                "timestamp":     datetime.datetime.now().isoformat(),
+                "explicaciones": explicaciones,
+            }, f, ensure_ascii=False, indent=2)
+        print("[explanation_builder]  💾  explicaciones.json")
+    except Exception as e:
+        errores.append(f"No se pudo guardar explicaciones.json: {e}")
 
     return {
         "explicaciones": explicaciones,

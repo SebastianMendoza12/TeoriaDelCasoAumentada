@@ -63,6 +63,95 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+st.markdown("""
+<style>
+  :root {
+      --tc-surface: #f8f9fa;
+      --tc-text: #1f2937;
+      --tc-heading: #111827;
+      --tc-primary: #4e79a7;
+      --tc-green-bg: #e8f5e9;
+      --tc-green-text: #1b5e20;
+      --tc-yellow-bg: #fff8e1;
+      --tc-yellow-text: #8a5a00;
+      --tc-red-bg: #ffebee;
+      --tc-red-text: #9f1239;
+      --tc-blue-bg: #e3f2fd;
+      --tc-blue-text: #0f4c81;
+      --tc-orange-bg: #fff3e0;
+      --tc-orange-text: #9a3412;
+      --tc-disclaimer-bg: #fff9c4;
+      --tc-disclaimer-text: #3f3f46;
+  }
+  @media (prefers-color-scheme: dark) {
+      :root {
+          --tc-surface: #111827;
+          --tc-text: #f3f4f6;
+          --tc-heading: #f9fafb;
+          --tc-primary: #93c5fd;
+          --tc-green-bg: #052e1a;
+          --tc-green-text: #86efac;
+          --tc-yellow-bg: #422006;
+          --tc-yellow-text: #fde68a;
+          --tc-red-bg: #450a0a;
+          --tc-red-text: #fecaca;
+          --tc-blue-bg: #082f49;
+          --tc-blue-text: #bae6fd;
+          --tc-orange-bg: #431407;
+          --tc-orange-text: #fed7aa;
+          --tc-disclaimer-bg: #422006;
+          --tc-disclaimer-text: #fef3c7;
+      }
+  }
+  [data-testid="metric-container"] {
+      background: var(--tc-surface) !important;
+      color: var(--tc-text) !important;
+      border-left: 4px solid var(--tc-primary) !important;
+  }
+  [data-testid="metric-container"] * { color: inherit !important; }
+  .semaforo-verde {
+      background: var(--tc-green-bg) !important;
+      color: var(--tc-green-text) !important;
+  }
+  .semaforo-amarillo {
+      background: var(--tc-yellow-bg) !important;
+      color: var(--tc-yellow-text) !important;
+  }
+  .semaforo-rojo {
+      background: var(--tc-red-bg) !important;
+      color: var(--tc-red-text) !important;
+  }
+  .seccion-titulo {
+      color: var(--tc-heading) !important;
+      border-bottom-color: var(--tc-primary) !important;
+  }
+  .alerta-critica {
+      background: var(--tc-red-bg) !important;
+      color: var(--tc-red-text) !important;
+      border-left-color: var(--tc-red-text) !important;
+  }
+  .alerta-alta {
+      background: var(--tc-orange-bg) !important;
+      color: var(--tc-orange-text) !important;
+      border-left-color: var(--tc-orange-text) !important;
+  }
+  .alerta-media {
+      background: var(--tc-blue-bg) !important;
+      color: var(--tc-blue-text) !important;
+      border-left-color: var(--tc-blue-text) !important;
+  }
+  .alerta-critica small, .alerta-alta small, .alerta-media small {
+      color: inherit !important;
+      opacity: 0.92;
+  }
+  .disclaimer {
+      background: var(--tc-disclaimer-bg) !important;
+      color: var(--tc-disclaimer-text) !important;
+      border-color: var(--tc-yellow-text) !important;
+  }
+</style>
+""", unsafe_allow_html=True)
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

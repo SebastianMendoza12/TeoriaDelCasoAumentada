@@ -8,10 +8,9 @@ Salida:  ataques
 
 import json
 import datetime
-from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from src.state import CaseState
-from src.config import GROQ_API_KEY, LLM_MODEL, LLM_TEMP
+from src.llm_client import invoke_llm
 
 PROMPT = ChatPromptTemplate.from_messages([
     ("system", """Eres el Agente Adversarial de un sistema de análisis jurídico.
@@ -58,6 +57,7 @@ def adversarial_node(state: CaseState) -> dict:
     matriz   = state.get("matriz_hpn", [])
     metricas = state.get("metricas", {})
     errores  = []
+    llm_meta = {"proveedor": "no_ejecutado", "modelo": "sin_modelo"}
 
     # Resumen de la matriz para no exceder contexto
     matriz_resumen = [
@@ -74,13 +74,10 @@ def adversarial_node(state: CaseState) -> dict:
     ]
 
     try:
-        llm = ChatGroq(api_key=GROQ_API_KEY, model=LLM_MODEL, temperature=0.2)
-        chain = PROMPT | llm
-
-        respuesta = chain.invoke({
+        respuesta, llm_meta = invoke_llm(PROMPT, {
             "matriz":   json.dumps(matriz_resumen, ensure_ascii=False, indent=2),
             "metricas": json.dumps(metricas.get("hpn", {}), ensure_ascii=False, indent=2),
-        })
+        }, temperature=0.2)
         contenido = respuesta.content.strip()
         if contenido.startswith("```"):
             contenido = contenido.split("```")[1]
@@ -101,8 +98,8 @@ def adversarial_node(state: CaseState) -> dict:
 
     traza = {
         "agente":    "adversarial",
-        "tipo":      "llm_groq",
-        "modelo":    LLM_MODEL,
+        "tipo":      f"llm_{llm_meta['proveedor']}",
+        "modelo":    llm_meta["modelo"],
         "timestamp": datetime.datetime.now().isoformat(),
         "ataques_identificados": len(ataques),
         "errores":   errores,
