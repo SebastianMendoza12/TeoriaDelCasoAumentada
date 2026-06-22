@@ -53,7 +53,7 @@ nodos intermedios, dado el flujo secuencial elegido):
 | Agente | Tipo | Entrada | Salida | Herramientas | Límite / condición de parada |
 |---|---|---|---|---|---|
 | intake | Python puro | `pdf_path` | `segmentos` (frag_id, página, texto, hash) | PyMuPDF | Termina al recorrer todas las páginas; no reintenta |
-| extractor | LLM (Groq llama-3.3-70b) | `segmentos` | `hechos`, `actores`, `cronologia` | `texto_resumido` (recorta a `MAX_SEGMENTOS_POR_LLAMADA`) | Una sola llamada; si el JSON no parsea, devuelve listas vacías y registra error |
+| extractor | LLM (Groq llama-3.3-70b + Cerebras gpt-oss-120b fallback) | `segmentos` | `hechos`, `actores`, `cronologia` | `texto_resumido` (recorta a `MAX_SEGMENTOS_POR_LLAMADA`) | Una sola llamada; si el JSON no parsea, devuelve listas vacías y registra error |
 | probatorio | LLM (Groq) | `hechos`, `segmentos` | `pruebas`, `vacios` | igual que extractor | Una sola llamada por ejecución |
 | normativo | LLM (Groq) | `hechos`, `segmentos` | `normas`, `vacios_normativos` | igual que extractor | Una sola llamada; nunca inventa artículos no citados en el expediente |
 | hpn_builder | LLM (Groq) + validador determinístico | `hechos`, `pruebas`, `normas`, `vacios` | `matriz_hpn` | `validar_fila()` en `hpn_tools.py` | Fila inválida se degrada a `pendiente`, no se descarta |
@@ -87,7 +87,7 @@ persiste y evite guardar conclusiones no verificadas por el auditor.
 |---|---|---|
 | PyMuPDF | intake | Lectura del PDF en `data/input/`. Sin escritura. |
 | NetworkX / PyVis | network_builder, metrics | Sin acceso a red ni disco fuera de `output/`. |
-| Groq API (llama-3.3-70b) | extractor, probatorio, normativo, hpn_builder, adversarial, simulator, auditor, explanation_builder | Requiere `GROQ_API_KEY`. Sin acceso a herramientas externas (no hace tool-calling, solo genera JSON). |
+| Groq API (llama-3.3-70b) + Cerebras API (gpt-oss-120b fallback) | extractor, probatorio, normativo, hpn_builder, adversarial, simulator, auditor, explanation_builder | Requiere `GROQ_API_KEY` y `CEREBRAS_API_KEY`. Sin acceso a herramientas externas (no hace tool-calling, solo genera JSON). |
 | Streamlit | dashboard/app.py | Lectura de `output/*.json`, escritura solo de `data/input/expediente.pdf` al subir archivo. |
 
 Ningún agente tiene acceso a shell, red arbitraria ni puede escribir
