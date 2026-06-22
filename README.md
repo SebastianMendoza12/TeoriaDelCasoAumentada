@@ -159,7 +159,7 @@ El PDF debe ser de texto (no escaneado). Si el profesor entrega el PDF en clase,
 ### Paso 2 — Ejecutar el sistema multiagente
 
 ```bash
-python src/graph.py
+python -m src.graph
 ```
 
 El sistema procesa el expediente y genera todos los artefactos en `output/`. El proceso tarda entre 1 y 3 minutos dependiendo del tamaño del PDF.

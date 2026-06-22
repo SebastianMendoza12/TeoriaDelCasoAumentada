@@ -176,9 +176,8 @@ def explanation_builder_node(state: CaseState) -> dict:
         "errores":   errores_verificacion,
     }
 
-    metricas_actuales = state.get("metricas", {})
-    metricas_actuales["explicabilidad"] = reporte_explicabilidad
-
+    metricas_actuales = {**state.get("metricas", {}), "explicabilidad": reporte_explicabilidad}
+    
     try:
         with open(OUTPUT_DIR / "explicaciones.json", "w", encoding="utf-8") as f:
             json.dump({
@@ -189,6 +188,13 @@ def explanation_builder_node(state: CaseState) -> dict:
         print("[explanation_builder]  💾  explicaciones.json")
     except Exception as e:
         errores.append(f"No se pudo guardar explicaciones.json: {e}")
+
+    try:
+        with open(OUTPUT_DIR / "metricas.json", "w", encoding="utf-8") as f:
+            json.dump(metricas_actuales, f, ensure_ascii=False, indent=2)
+        print("[explanation_builder]  💾  metricas.json (con explicabilidad)")
+    except Exception as e:
+        errores.append(f"No se pudo actualizar metricas.json: {e}")
 
     return {
         "explicaciones": explicaciones,

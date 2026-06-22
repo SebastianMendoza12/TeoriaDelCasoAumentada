@@ -104,16 +104,10 @@ def guardar_artefactos(estado: CaseState, checklist: dict, loop: dict, guard: di
         "filas":      estado.get("matriz_hpn", []),
     })
     _json(OUTPUT_GRAFO,      estado.get("grafo", {}))
-    _json(OUTPUT_METRICAS,   estado.get("metricas", {}))
     _json(OUTPUT_ESCENARIOS, {
         "case_id":    estado.get("case_id"),
         "timestamp":  datetime.datetime.now().isoformat(),
         "escenarios": estado.get("escenarios", []),
-    })
-    _json(OUTPUT_EXPLICACIONES, {
-        "case_id":       estado.get("case_id"),
-        "timestamp":     datetime.datetime.now().isoformat(),
-        "explicaciones": estado.get("explicaciones", []),
     })
     pd.json_normalize(estado.get("matriz_hpn", [])).to_csv(
         OUTPUT_DIR / "matriz_hpn.csv", index=False
