@@ -738,8 +738,12 @@ elif pagina == "🎭  Escenarios":
                 st.markdown(f"**Hechos afectados:** `{', '.join(analisis['hechos_afectados'])}`")
             if analisis.get("rutas_debilitadas"):
                 st.markdown("**Rutas debilitadas:**")
-                for r in analisis["rutas_debilitadas"]:
-                    st.markdown(f"  — {r}")
+                rutas = analisis["rutas_debilitadas"]
+                if isinstance(rutas, str):
+                    st.markdown(f"  — {rutas}")
+                else:
+                    for r in rutas:
+                        st.markdown(f"  — {r}")
 
             st.success(f"💡 **Acción sugerida:** {analisis.get('accion_sugerida','')}")
             st.caption(f"ℹ️ {analisis.get('incertidumbre','')}  ·  Requiere revisión humana.")

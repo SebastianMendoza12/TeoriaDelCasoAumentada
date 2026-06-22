@@ -62,11 +62,16 @@ Devuelve ÚNICAMENTE JSON válido, sin texto adicional:
 {{
   "hechos_afectados": ["H001", "H003"],
   "filas_hpn_impactadas": ["HPN-001", "HPN-003"],
-  "rutas_debilitadas": ["descripción de la ruta que pierde soporte"],
+  "rutas_debilitadas": [
+    "Ruta H012 → PR-Incumplimiento: pierde soporte probatorio.",
+    "Ruta H003 → PR-Incumplimiento: redundancia reducida."
+  ],
   "nivel_impacto": "bajo | medio | alto | critico",
   "accion_sugerida": "acción concreta que debe tomar el abogado",
   "incertidumbre": "nota de cautela sobre las limitaciones del análisis"
-}}"""),
+}}
+
+NOTA: rutas_debilitadas debe ser SIEMPRE una lista de strings cortos (máximo 1 línea cada uno). NUNCA un string único."""),
     ("human", """Escenario simulado:
 {escenario}
 
