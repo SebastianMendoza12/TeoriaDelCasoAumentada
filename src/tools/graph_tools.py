@@ -168,7 +168,7 @@ def construir_grafo(
 
 def grafo_a_dict(G: nx.DiGraph) -> dict:
     """Serializa el grafo a dict compatible con JSON (formato node_link_data)."""
-    return nx.node_link_data(G)
+    return nx.node_link_data(G, edges="links")
 
 
 def calcular_metricas_red(G: nx.DiGraph) -> dict:

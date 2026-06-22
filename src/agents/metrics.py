@@ -31,7 +31,7 @@ def metrics_node(state: CaseState) -> dict:
     metricas_red = {}
     try:
         if grafo_dict.get("nodes"):
-            G = nx.node_link_graph(grafo_dict)
+            G = nx.node_link_graph(grafo_dict, edges="links")
             metricas_red = calcular_metricas_red(G)
         else:
             metricas_red = {"advertencia": "Grafo vacío, no se calcularon métricas de red"}
