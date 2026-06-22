@@ -40,7 +40,7 @@ LLM_TEMP     = 0.0
 # Usa la misma interfaz de OpenAI via langchain-openai
 CEREBRAS_API_KEY  = os.getenv("CEREBRAS_API_KEY", "")
 CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1"
-CEREBRAS_MODEL    = "llama-3.3-70b"
+CEREBRAS_MODEL    = "gpt-oss-120b"
 
 # ── Umbrales ───────────────────────────────────────────────────────────────────
 MAX_SEGMENTOS_POR_LLAMADA = 15
